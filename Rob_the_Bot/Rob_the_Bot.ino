@@ -1,6 +1,6 @@
 #include <QTRSensors.h>
 #include <Servo.h> 
-#include <DistanceGP2Y0A21YK.h>
+#include <DistanceGP2Y0A21YK.h> //library can be found here https://github.com/jeroendoggen/Arduino-distance-sensor-library
 // This example is designed for use with eight QTR-1RC sensors or the eight sensors of a
 // QTR-8RC module.  These reflectance sensors should be connected to digital inputs 3 to 10.
 // The QTR-8RC's emitter control pin (LEDON) can optionally be connected to digital pin 2, 
@@ -39,7 +39,7 @@ int servo_up = 40;
 
 //Sharp analog distance sensors
 char front_left = A0; //connected to pin A0
-char front_right = A1M;
+char front_right = A1;
 char side_left = A2;
 char side_right = A3;
 char back = A4;
