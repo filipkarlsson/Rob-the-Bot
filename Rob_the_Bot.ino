@@ -37,15 +37,8 @@ int servo_up = 40;
 
 
 
-//Sharp analog distance sensors
-char front_left = A0; //connected to pin A0
-char front_right = A1;
-char side_left = A2;
-char side_right = A3;
-char back = A4;
-
-DistanceGP2Y0A21YK dist(unsigned char[] {front_left, front_right, side_left, side_right, back};
-int distance[NUM_ANALOGA];
+DistanceGP2Y0A21YK dist;
+int distance[NUM_ANALOG];
 
 
 void setup()
@@ -53,7 +46,7 @@ void setup()
   servo.attach(9);  // attaches the servo on pin 9 to the servo object
   motor_right.attach(11);
   motor_left.attach(10);
-  Serial.begin(9600)
+  Serial.begin(9600);
   dist.begin(A0);
   dist.begin(A1);
   dist.begin(A2);
@@ -125,7 +118,7 @@ void loop()
   else if (distance[4] > 0 and sensorValues > 1000){
    motor_right.write(180);
   motor_left.write(0);
-  delay(300)
+  delay(300);
   motor_right.write(180);
   motor_left.write(180);    
   }
