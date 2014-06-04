@@ -5,20 +5,8 @@
 
 //Edge sensors------------
 
-// This example is designed for use with eight QTR-1RC sensors or the eight sensors of a
-// QTR-8RC module.  These reflectance sensors should be connected to digital inputs 3 to 10.
-// The QTR-8RC's emitter control pin (LEDON) can optionally be connected to digital pin 2, 
-// or you can leave it disconnected and change the EMITTER_PIN #define below from 2 to 
-// QTR_NO_EMITTER_PIN.
-
-// The main loop of the example reads the raw sensor values (uncalibrated).
-// You can test this by taping a piece of 3/4" black electrical tape to a piece of white 
-// paper and sliding the sensor across it.  It prints the sensor values to the serial 
-// monitor as numbers from 0 (maximum reflectance) to 2500 (minimum reflectance).
-
-
 #define NUM_SENSORS   4     // number of sensors used
-#define TIMEOUT       2500  // waits for 2500 microseconds for sensor outputs to go low
+#define TIMEOUT       1500  // waits for 1500 microseconds for sensor outputs to go low
 #define EMITTER_PIN   QTR_NO_EMITTER_PIN     // emitter is controlled by digital pin 2
 
 // sensors 0 through 1 are connected to digital pins 3 through 4, respectively
@@ -44,7 +32,6 @@ int d_left, d_front_left, d_front_right, d_right, d_back;
 
 
 // Start module ------
-
 int start_pin = 7;
 
 
@@ -53,13 +40,25 @@ int start_pin = 7;
 Servo motor_right;
 Servo motor_left;
 
-int forward = 110; 
-int backward = 70;
+int fast_forward = 180; 
+int fast_backward = 0;
+int forward = 140;
+int backward = 40;
 int still = 90;
 
+int react_dist = 50;
+int back_delay = 350;
+
 Servo servo;
-int servo_down = 161;
-int servo_up = 40;
+int servo_down = 2200; 
+int servo_up = 1100;
+
+
+void front_check();
+void back_check();
+void turn_180();
+void turn_left();
+void turn_right();
 
 void setup()
 {
@@ -80,113 +79,220 @@ void setup()
 
 void loop()
 {
-  while(!digitalRead(start_pin))
+  
+  servo.writeMicroseconds(servo_up); //Set servo to upright position
+
+  while(!digitalRead(start_pin)) //wait for start signal
   {
-    delay(1);
+      //read sensors while waiting
+      d_left = left.getDistanceCentimeter();
+      d_front_left = front_left.getDistanceCentimeter();
+      d_front_right = front_right.getDistanceCentimeter();
+      d_right = right.getDistanceCentimeter();
+      d_back = back.getDistanceCentimeter();
   }
   
-  servo.write(servo_down);
-  delay(1500);
+  servo.writeMicroseconds(servo_down);
+
   
-  motor_right.write(forward);
-  motor_left.write(backward);
-  delay(4000);
-  motor_right.write(forward);
-  motor_left.write(forward);
+    turn_180();
   
-  while(true){
-  // read raw sensor values
-      qtrrc.read(sensorValues);   
+  
+   while(digitalRead(start_pin)){ //main loop, run until no start signal
+
+        
     
-      // sensor values as numbers from 0 to 2500, where 0 means maximum reflectance and
-      // 1023 means minimum reflectance
-      
-        if(sensorValues[0] < 1000){
-          out_front_left = true;   
-        }
-        if(sensorValues[1] < 1000){
-          out_front_right = true;   
-        }
-        if(sensorValues[2] < 1000){
-          out_back_left = true;   
-        }
-        if(sensorValues[3] < 1000){
-          out_back_right = true;   
-        }
-        
-        
-  //read distance sensors
+     //------------ opponent---------
+
+     //read distance sensors
       d_left = left.getDistanceCentimeter();
       d_front_left = front_left.getDistanceCentimeter();
       d_front_right = front_right.getDistanceCentimeter();
       d_right = right.getDistanceCentimeter();
       d_back = back.getDistanceCentimeter();
       
-  //--------------------------------------------------------------------
 
-  
-      
-  // Action :D --------------------
-      //----- edge ----
-      if(out_front_left){
-        motor_right.write(backward);
-        motor_left.write(backward - 10); //faster
-        delay(300);
-        out_front_left = false;
-      }
-       else if(out_front_right){
-        motor_right.write(backward - 10); //faster
-        motor_left.write(backward);
-        delay(300);
-        out_front_right = false;
-      }
-         else if(out_back_left){
-        motor_right.write(forward);
-        motor_left.write(forward);
-        //delay(300);
-        out_back_left = false;
-      }
-         else if(out_back_right){
-        motor_right.write(forward);
-        motor_left.write(forward);
-        //delay(300);
-        out_back_right = false;
-      }
-      
-      else{
-      motor_right.write(forward);
-      motor_left.write(forward);
-      }
-      
-      
-      
-     //------------ opponent---------
+
  
-     if((d_front_left < 70) && (d_right < 70)){  //If opponent is right infront go forward as long as opponent is in right in front
-       while((d_front_left < 70) && (d_right < 70)){
-         motor_right.write(forward);
-         motor_left.write(forward);
+     if((d_front_left < react_dist) && (d_front_right < react_dist)){  //If opponent is right infront go forward as long as opponent is in right in front
+       while((d_front_left < react_dist) && (d_front_right < react_dist)){
+        motor_right.write(fast_forward);
+        motor_left.write(fast_forward);
+   
+        d_front_left = front_left.getDistanceCentimeter();
+        d_front_right = front_right.getDistanceCentimeter();
+
+        front_check();
+        back_check();
+
        }
      }
+     //_______________
      
-     if(d_left < 70){
-     motor_right.write(forward);
-     motor_left.write(backward);
-     delay(500);
+     
+     else if((d_front_left < react_dist) && (d_front_right > react_dist)){ //opponenet is left-front
+           
+           motor_right.write(fast_forward);
+           motor_left.write(forward-10);
+           while(d_front_left < d_front_right){
+                 d_front_left = front_left.getDistanceCentimeter();
+                 d_front_right = front_right.getDistanceCentimeter();
+                 front_check();
+
+           }
+           
+         motor_right.write(forward);
+         motor_left.write(forward);
+           
+     }
+     //-------------------------------------------------------
+      else if((d_front_right < react_dist) && (d_front_left > react_dist)){ //opponenet is right-front
+           
+           motor_left.write(fast_forward);
+           motor_right.write(forward-10);
+           while(d_front_right < d_front_left){
+                 d_front_left = front_left.getDistanceCentimeter();
+                 d_front_right = front_right.getDistanceCentimeter();
+                 front_check();
+
+           }
+           
+         motor_right.write(forward);
+         motor_left.write(forward);
+           
      }
      
-     if(d_right < 70){
-     motor_right.write(backward);
-     motor_left.write(forward);
-     delay(500);
+     //-------------------------------------------------------
+     
+     
+      else if(d_left < react_dist){ //opponenet is to the left
+          
+        turn_left();
+           }
+          
+     
+     //____________________________________________
+     
+     
+     
+     
+     else if(d_right < react_dist){ //opponenet is to the right
+          turn_right();
      }
      
-     if(d_back < 70){
-     motor_right.write(forward);
-     motor_left.write(backward);
-     delay(1000);
+    //-------------------------------------------------------------------
+    
+    
+   else if(d_back < react_dist){ //opponenet is behind
+ 
+         turn_180();
+     }
+     
+     else{   //opponent is not detcted, turn until otherwise
+        motor_right.write(backward);
+        motor_left.write(fast_forward);
+        while((d_left > react_dist) && (d_back > react_dist) && (d_right > react_dist) && (d_front_left > react_dist) && (d_front_right > react_dist)){
+          d_left = left.getDistanceCentimeter();
+          d_front_left = front_left.getDistanceCentimeter();
+          d_front_right = front_right.getDistanceCentimeter();
+          d_right = right.getDistanceCentimeter();
+          d_back = back.getDistanceCentimeter();
+          front_check();
+
+        }
+        motor_right.write(still);
+        motor_left.write(still);
+        delay(10);
      }
      
 
   }
+  motor_right.write(still); //when no start signal stop, not neccesary but nice while testing
+  motor_left.write(still);
+  
 }
+
+
+
+
+
+void front_check(){
+
+//check for white line in front
+      qtrrc.read(sensorValues);
+
+      if(sensorValues[0] < 1000){ //if over the line front-left go back for 350 ms
+          motor_right.write(backward);
+          motor_left.write(fast_backward);
+          delay(back_delay);
+          back_check();
+        }
+        else if(sensorValues[1] < 1000){
+          motor_right.write(fast_backward);
+          motor_left.write(backward);
+          delay(back_delay);
+
+          back_check();
+
+        }
+
+        return;
+}
+
+void back_check(){
+
+//check for white line in front
+      qtrrc.read(sensorValues);
+        /*if((sensorValues[2] < 1000) && (sensorValues[3] < 1000)){
+          motor_right.write(backward+20);
+          motor_left.write(fast_backward);
+          delay(back_delay);
+
+        }
+
+        else*/ if(sensorValues[2] < 1000){ //if over the line back-left go back for 350 ms
+          turn_right();
+          motor_right.write(forward);
+          motor_left.write(forward);
+          delay(back_delay);
+        }
+        else if(sensorValues[3] < 1000){
+          turn_left();
+          motor_right.write(forward);
+          motor_left.write(forward);
+         delay(back_delay);
+        }
+
+        return;
+}
+   
+
+void turn_180(){
+  motor_right.write(180);
+  motor_left.write(0);
+
+  delay(250);
+  motor_left.write(forward);
+  motor_right.write(backward);
+  return;
+}  
+
+void turn_right(){
+  motor_right.write(0);
+  motor_left.write(180);
+
+  delay(135);
+  motor_left.write(forward);
+  motor_right.write(forward);
+  return;
+} 
+
+void turn_left(){
+  motor_right.write(180);
+  motor_left.write(0);
+
+  delay(135);
+  motor_left.write(forward);
+  motor_right.write(forward);
+  return;
+} 
